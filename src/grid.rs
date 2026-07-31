@@ -12,6 +12,7 @@ pub struct Grid {
     saved_origin_mode: bool,
     scrollback: std::collections::VecDeque<crate::row::Row>,
     scrollback_len: usize,
+    scrollback_top: usize,
     scrollback_offset: usize,
 }
 
@@ -28,6 +29,7 @@ impl Grid {
             saved_origin_mode: false,
             scrollback: std::collections::VecDeque::new(),
             scrollback_len,
+            scrollback_top: 0,
             scrollback_offset: 0,
         }
     }
@@ -189,6 +191,14 @@ impl Grid {
 
     pub fn scrollback_len(&self) -> usize {
         self.scrollback_len
+    }
+
+    pub fn scrollback_rows(&self) -> usize {
+        self.scrollback.len()
+    }
+
+    pub fn scrollback_top(&self) -> usize {
+        self.scrollback_top
     }
 
     pub fn scrollback(&self) -> usize {
@@ -570,10 +580,17 @@ impl Grid {
             // via `SetScrollRegion(1..viewport_top)` + `\r\n` / reverse-index — they never built
             // any scrollback. With `scroll_top == 0`, full-screen scrolling is unchanged and we
             // save only when the region includes the screen top (matching xterm).
-            if self.scrollback_len > 0 && self.scroll_top == 0 {
-                self.scrollback.push_back(removed);
-                while self.scrollback.len() > self.scrollback_len {
-                    self.scrollback.pop_front();
+            if self.scroll_top == 0 {
+                if self.scrollback_len > 0 {
+                    self.scrollback.push_back(removed);
+                    while self.scrollback.len() > self.scrollback_len {
+                        self.scrollback.pop_front();
+                        self.scrollback_top =
+                            self.scrollback_top.saturating_add(1);
+                    }
+                } else {
+                    self.scrollback_top =
+                        self.scrollback_top.saturating_add(1);
                 }
                 if self.scrollback_offset > 0 {
                     self.scrollback_offset =

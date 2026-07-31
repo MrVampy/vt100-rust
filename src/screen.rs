@@ -123,6 +123,22 @@ impl Screen {
         self.grid().scrollback()
     }
 
+    /// Returns the number of rows currently retained in the scrollback.
+    #[must_use]
+    pub fn scrollback_rows(&self) -> usize {
+        self.grid().scrollback_rows()
+    }
+
+    /// Returns the stable index of the oldest retained scrollback row.
+    ///
+    /// The value advances whenever a row is discarded from the front of the
+    /// bounded scrollback. Adding it to [`Self::scrollback_rows`] yields the
+    /// stable index of the first row on the live screen.
+    #[must_use]
+    pub fn scrollback_top(&self) -> usize {
+        self.grid().scrollback_top()
+    }
+
     /// Returns the text contents of the terminal.
     ///
     /// This will not include any formatting information, and will be in plain
