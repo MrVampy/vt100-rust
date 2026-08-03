@@ -46,7 +46,7 @@ impl<CB: crate::callbacks::Callbacks> Parser<CB> {
         Ok(Self {
             parser: vte::Parser::new(),
             screen: crate::perform::WrappedScreen::from_screen(
-                crate::Screen::from_state(state),
+                crate::Screen::from_state(&state),
                 callbacks,
             ),
         })
