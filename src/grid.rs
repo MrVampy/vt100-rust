@@ -66,7 +66,7 @@ impl Grid {
         }
     }
 
-    pub(crate) fn from_state(size: Size, state: &crate::GridState) -> Self {
+    pub(crate) fn from_state(size: Size, state: crate::GridState) -> Self {
         Self {
             size,
             pos: Pos {
@@ -79,7 +79,7 @@ impl Grid {
             },
             rows: state
                 .rows
-                .iter()
+                .into_iter()
                 .map(crate::row::Row::from_state)
                 .collect(),
             scroll_top: state.scroll_top,
@@ -88,7 +88,7 @@ impl Grid {
             saved_origin_mode: state.saved_origin_mode,
             scrollback: state
                 .scrollback
-                .iter()
+                .into_iter()
                 .map(crate::row::Row::from_state)
                 .collect(),
             scrollback_len: state.scrollback_limit,

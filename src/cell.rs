@@ -52,11 +52,15 @@ impl Cell {
         }
     }
 
-    pub(crate) fn from_state(state: &crate::CellState) -> Self {
+    pub(crate) fn from_state(state: crate::CellState) -> Self {
+        let crate::CellState {
+            contents: state_contents,
+            kind,
+            attributes,
+        } = state;
         let mut contents = [0; CONTENT_BYTES];
-        let bytes = state.contents.as_bytes();
+        let bytes = state_contents.as_bytes();
         contents[..bytes.len()].copy_from_slice(bytes);
-        let kind = state.kind;
         let mut len = u8::try_from(bytes.len()).unwrap();
         if kind == crate::CellKind::Wide {
             len |= IS_WIDE;
@@ -66,7 +70,7 @@ impl Cell {
         Self {
             contents,
             len,
-            attrs: crate::attrs::Attrs::from_state(state.attributes),
+            attrs: crate::attrs::Attrs::from_state(attributes),
         }
     }
 

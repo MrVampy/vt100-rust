@@ -110,7 +110,7 @@ impl Screen {
         }
     }
 
-    pub(crate) fn from_state(state: &crate::ScreenState) -> Self {
+    pub(crate) fn from_state(state: crate::ScreenState) -> Self {
         let size = crate::grid::Size {
             rows: state.rows,
             cols: state.columns,
@@ -132,10 +132,10 @@ impl Screen {
             modes |= MODE_BRACKETED_PASTE;
         }
         Self {
-            grid: crate::grid::Grid::from_state(size, &state.primary_grid),
+            grid: crate::grid::Grid::from_state(size, state.primary_grid),
             alternate_grid: crate::grid::Grid::from_state(
                 size,
-                &state.alternate_grid,
+                state.alternate_grid,
             ),
             attrs: crate::attrs::Attrs::from_state(state.attributes),
             saved_attrs: crate::attrs::Attrs::from_state(
