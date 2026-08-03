@@ -84,6 +84,69 @@ impl Screen {
         }
     }
 
+    /// Returns a normalized copy of both grids and all represented visual state.
+    #[must_use]
+    pub fn state(&self) -> crate::ScreenState {
+        crate::ScreenState {
+            rows: self.grid.size().rows,
+            columns: self.grid.size().cols,
+            primary_grid: self.grid.state(),
+            alternate_grid: self.alternate_grid.state(),
+            attributes: self.attrs.state(),
+            saved_attributes: self.saved_attrs.state(),
+            modes: crate::ScreenModes {
+                active_buffer: if self.mode(MODE_ALTERNATE_SCREEN) {
+                    crate::ActiveBuffer::Alternate
+                } else {
+                    crate::ActiveBuffer::Primary
+                },
+                cursor_visible: !self.mode(MODE_HIDE_CURSOR),
+                application_keypad: self.mode(MODE_APPLICATION_KEYPAD),
+                application_cursor: self.mode(MODE_APPLICATION_CURSOR),
+                bracketed_paste: self.mode(MODE_BRACKETED_PASTE),
+                mouse_protocol_mode: self.mouse_protocol_mode,
+                mouse_protocol_encoding: self.mouse_protocol_encoding,
+            },
+        }
+    }
+
+    pub(crate) fn from_state(state: crate::ScreenState) -> Self {
+        let size = crate::grid::Size {
+            rows: state.rows,
+            cols: state.columns,
+        };
+        let mut modes = 0;
+        if state.modes.active_buffer == crate::ActiveBuffer::Alternate {
+            modes |= MODE_ALTERNATE_SCREEN;
+        }
+        if !state.modes.cursor_visible {
+            modes |= MODE_HIDE_CURSOR;
+        }
+        if state.modes.application_keypad {
+            modes |= MODE_APPLICATION_KEYPAD;
+        }
+        if state.modes.application_cursor {
+            modes |= MODE_APPLICATION_CURSOR;
+        }
+        if state.modes.bracketed_paste {
+            modes |= MODE_BRACKETED_PASTE;
+        }
+        Self {
+            grid: crate::grid::Grid::from_state(size, state.primary_grid),
+            alternate_grid: crate::grid::Grid::from_state(
+                size,
+                state.alternate_grid,
+            ),
+            attrs: crate::attrs::Attrs::from_state(state.attributes),
+            saved_attrs: crate::attrs::Attrs::from_state(
+                state.saved_attributes,
+            ),
+            modes,
+            mouse_protocol_mode: state.modes.mouse_protocol_mode,
+            mouse_protocol_encoding: state.modes.mouse_protocol_encoding,
+        }
+    }
+
     /// Resizes the terminal.
     pub fn set_size(&mut self, rows: u16, cols: u16) {
         self.grid.set_size(crate::grid::Size { rows, cols });
@@ -137,6 +200,18 @@ impl Screen {
     #[must_use]
     pub fn scrollback_top(&self) -> usize {
         self.grid().scrollback_top()
+    }
+
+    /// Returns the retained row count in the primary buffer, even while the alternate buffer is active.
+    #[must_use]
+    pub fn primary_scrollback_rows(&self) -> usize {
+        self.grid.scrollback_rows()
+    }
+
+    /// Returns the oldest stable primary-buffer row, even while the alternate buffer is active.
+    #[must_use]
+    pub fn primary_scrollback_top(&self) -> usize {
+        self.grid.scrollback_top()
     }
 
     /// Returns the text contents of the terminal.

@@ -14,6 +14,32 @@ impl Row {
         }
     }
 
+    pub(crate) fn state(&self) -> crate::RowState {
+        crate::RowState {
+            cells: self.cells.iter().map(crate::Cell::state).collect(),
+            wrapped: self.wrapped,
+        }
+    }
+
+    pub(crate) fn state_with_columns(&self, columns: u16) -> crate::RowState {
+        let wrapped = self.wrapped;
+        let mut row = self.clone();
+        row.resize(columns, crate::Cell::new());
+        row.wrap(wrapped);
+        row.state()
+    }
+
+    pub(crate) fn from_state(state: crate::RowState) -> Self {
+        Self {
+            cells: state
+                .cells
+                .into_iter()
+                .map(crate::Cell::from_state)
+                .collect(),
+            wrapped: state.wrapped,
+        }
+    }
+
     fn cols(&self) -> u16 {
         self.cells
             .len()

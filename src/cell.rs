@@ -1,7 +1,7 @@
 use unicode_width::UnicodeWidthChar as _;
 
 // chosen to make the size of the cell struct 32 bytes
-const CONTENT_BYTES: usize = 22;
+pub(crate) const CONTENT_BYTES: usize = 22;
 
 const IS_WIDE: u8 = 0b1000_0000;
 const IS_WIDE_CONTINUATION: u8 = 0b0100_0000;
@@ -35,6 +35,38 @@ impl Cell {
             contents: Default::default(),
             len: 0,
             attrs: crate::attrs::Attrs::default(),
+        }
+    }
+
+    pub(crate) fn state(&self) -> crate::CellState {
+        crate::CellState {
+            contents: self.contents().to_string(),
+            kind: if self.is_wide() {
+                crate::CellKind::Wide
+            } else if self.is_wide_continuation() {
+                crate::CellKind::WideContinuation
+            } else {
+                crate::CellKind::Narrow
+            },
+            attributes: self.attrs.state(),
+        }
+    }
+
+    pub(crate) fn from_state(state: crate::CellState) -> Self {
+        let mut contents = [0; CONTENT_BYTES];
+        let bytes = state.contents.as_bytes();
+        contents[..bytes.len()].copy_from_slice(bytes);
+        let kind = state.kind;
+        let mut len = u8::try_from(bytes.len()).unwrap();
+        if kind == crate::CellKind::Wide {
+            len |= IS_WIDE;
+        } else if kind == crate::CellKind::WideContinuation {
+            len |= IS_WIDE_CONTINUATION;
+        }
+        Self {
+            contents,
+            len,
+            attrs: crate::attrs::Attrs::from_state(state.attributes),
         }
     }
 

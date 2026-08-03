@@ -14,6 +14,10 @@ impl WrappedScreen<()> {
 }
 
 impl<CB: crate::callbacks::Callbacks> WrappedScreen<CB> {
+    pub(crate) fn from_screen(screen: crate::Screen, callbacks: CB) -> Self {
+        Self { screen, callbacks }
+    }
+
     pub fn new_with_callbacks(
         rows: u16,
         cols: u16,

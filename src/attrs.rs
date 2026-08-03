@@ -29,6 +29,35 @@ pub struct Attrs {
 }
 
 impl Attrs {
+    pub(crate) fn state(&self) -> crate::CellAttributes {
+        crate::CellAttributes {
+            foreground: self.fgcolor,
+            background: self.bgcolor,
+            bold: self.bold(),
+            dim: self.dim(),
+            italic: self.italic(),
+            underline: self.underline(),
+            inverse: self.inverse(),
+        }
+    }
+
+    pub(crate) fn from_state(state: crate::CellAttributes) -> Self {
+        let mut attributes = Self {
+            fgcolor: state.foreground,
+            bgcolor: state.background,
+            mode: 0,
+        };
+        if state.bold {
+            attributes.set_bold();
+        } else if state.dim {
+            attributes.set_dim();
+        }
+        attributes.set_italic(state.italic);
+        attributes.set_underline(state.underline);
+        attributes.set_inverse(state.inverse);
+        attributes
+    }
+
     pub fn bold(&self) -> bool {
         self.mode & TEXT_MODE_BOLD != 0
     }

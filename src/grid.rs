@@ -34,6 +34,69 @@ impl Grid {
         }
     }
 
+    pub(crate) fn state(&self) -> crate::GridState {
+        let rows = if self.rows.is_empty() {
+            std::iter::repeat_with(|| crate::RowState::blank(self.size.cols))
+                .take(usize::from(self.size.rows))
+                .collect()
+        } else {
+            self.rows.iter().map(crate::row::Row::state).collect()
+        };
+        crate::GridState {
+            cursor: crate::Position {
+                row: self.pos.row,
+                column: self.pos.col,
+            },
+            saved_cursor: crate::Position {
+                row: self.saved_pos.row,
+                column: self.saved_pos.col,
+            },
+            scroll_top: self.scroll_top,
+            scroll_bottom: self.scroll_bottom,
+            origin_mode: self.origin_mode,
+            saved_origin_mode: self.saved_origin_mode,
+            rows,
+            scrollback: self
+                .scrollback
+                .iter()
+                .map(|row| row.state_with_columns(self.size.cols))
+                .collect(),
+            scrollback_limit: self.scrollback_len,
+            scrollback_top: self.scrollback_top,
+        }
+    }
+
+    pub(crate) fn from_state(size: Size, state: crate::GridState) -> Self {
+        Self {
+            size,
+            pos: Pos {
+                row: state.cursor.row,
+                col: state.cursor.column,
+            },
+            saved_pos: Pos {
+                row: state.saved_cursor.row,
+                col: state.saved_cursor.column,
+            },
+            rows: state
+                .rows
+                .into_iter()
+                .map(crate::row::Row::from_state)
+                .collect(),
+            scroll_top: state.scroll_top,
+            scroll_bottom: state.scroll_bottom,
+            origin_mode: state.origin_mode,
+            saved_origin_mode: state.saved_origin_mode,
+            scrollback: state
+                .scrollback
+                .into_iter()
+                .map(crate::row::Row::from_state)
+                .collect(),
+            scrollback_len: state.scrollback_limit,
+            scrollback_top: state.scrollback_top,
+            scrollback_offset: 0,
+        }
+    }
+
     pub fn allocate_rows(&mut self) {
         if self.rows.is_empty() {
             self.rows.extend(

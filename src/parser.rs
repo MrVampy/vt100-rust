@@ -19,9 +19,31 @@ impl Parser {
             ),
         }
     }
+
+    /// Creates a parser in ground state around a validated visual state.
+    pub fn from_screen_state(
+        state: crate::ScreenState,
+    ) -> Result<Self, crate::ScreenStateError> {
+        Self::from_screen_state_with_callbacks(state, ())
+    }
 }
 
 impl<CB: crate::callbacks::Callbacks> Parser<CB> {
+    /// Creates a parser in ground state around a validated visual state and callbacks.
+    pub fn from_screen_state_with_callbacks(
+        state: crate::ScreenState,
+        callbacks: CB,
+    ) -> Result<Self, crate::ScreenStateError> {
+        state.validate()?;
+        Ok(Self {
+            parser: vte::Parser::new(),
+            screen: crate::perform::WrappedScreen::from_screen(
+                crate::Screen::from_state(state),
+                callbacks,
+            ),
+        })
+    }
+
     /// Creates a new terminal parser of the given size and with the given
     /// amount of scrollback. Terminal events will be reported via method
     /// calls on the provided [`Callbacks`](crate::callbacks::Callbacks)
