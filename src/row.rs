@@ -31,11 +31,7 @@ impl Row {
 
     pub(crate) fn from_state(state: crate::RowState) -> Self {
         Self {
-            cells: state
-                .cells
-                .into_iter()
-                .map(crate::Cell::from_state)
-                .collect(),
+            cells: state.cells.iter().map(crate::Cell::from_state).collect(),
             wrapped: state.wrapped,
         }
     }

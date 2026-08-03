@@ -21,6 +21,10 @@ impl Parser {
     }
 
     /// Creates a parser in ground state around a validated visual state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the visual state violates an emulator invariant.
     pub fn from_screen_state(
         state: crate::ScreenState,
     ) -> Result<Self, crate::ScreenStateError> {
@@ -30,6 +34,10 @@ impl Parser {
 
 impl<CB: crate::callbacks::Callbacks> Parser<CB> {
     /// Creates a parser in ground state around a validated visual state and callbacks.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the visual state violates an emulator invariant.
     pub fn from_screen_state_with_callbacks(
         state: crate::ScreenState,
         callbacks: CB,

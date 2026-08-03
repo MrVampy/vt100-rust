@@ -21,6 +21,10 @@ pub struct ScreenState {
 
 impl ScreenState {
     /// Verifies that this state can be imported without violating emulator invariants.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when dimensions, grids, cells, cursors, or modes are invalid.
     pub fn validate(&self) -> Result<(), ScreenStateError> {
         if self.rows == 0 || self.columns == 0 {
             return Err(ScreenStateError::new("screen dimensions are empty"));

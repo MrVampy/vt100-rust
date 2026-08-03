@@ -1,7 +1,7 @@
 use unicode_width::UnicodeWidthChar as _;
 
 // chosen to make the size of the cell struct 32 bytes
-pub(crate) const CONTENT_BYTES: usize = 22;
+pub const CONTENT_BYTES: usize = 22;
 
 const IS_WIDE: u8 = 0b1000_0000;
 const IS_WIDE_CONTINUATION: u8 = 0b0100_0000;
@@ -52,7 +52,7 @@ impl Cell {
         }
     }
 
-    pub(crate) fn from_state(state: crate::CellState) -> Self {
+    pub(crate) fn from_state(state: &crate::CellState) -> Self {
         let mut contents = [0; CONTENT_BYTES];
         let bytes = state.contents.as_bytes();
         contents[..bytes.len()].copy_from_slice(bytes);
