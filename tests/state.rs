@@ -56,3 +56,51 @@ fn accepts_a_saved_origin_cursor_outside_a_replaced_scroll_region() {
     assert!(state.primary_grid.origin_mode);
     assert!(state.primary_grid.cursor.row < state.primary_grid.scroll_top);
 }
+
+#[test]
+fn replacement_process_reset_preserves_scrollback_and_clears_live_state() {
+    let mut parser = Parser::new(4, 8, 8);
+    parser.process(b"one\r\ntwo\r\nthree\r\nfour\r\nfive\r\nsix");
+    parser.process(b"\x1b[1;34m\x1b7\x1b[?1h\x1b[?2004h");
+    parser.process(b"\x1b[?1049h\x1b[?25lalternate\x1b[31");
+    let before = parser.screen().state();
+    assert!(!before.primary_grid.scrollback.is_empty());
+
+    parser.reset_for_new_process();
+    let reset = parser.screen().state();
+
+    assert_eq!(
+        reset.primary_grid.scrollback,
+        before.primary_grid.scrollback
+    );
+    assert_eq!(
+        reset.primary_grid.scrollback_top,
+        before.primary_grid.scrollback_top
+    );
+    assert_eq!(
+        reset.primary_grid.scrollback_limit,
+        before.primary_grid.scrollback_limit
+    );
+    assert!(reset
+        .primary_grid
+        .rows
+        .iter()
+        .chain(&reset.alternate_grid.rows)
+        .flat_map(|row| &row.cells)
+        .all(|cell| cell.contents.is_empty()));
+    assert_eq!(reset.primary_grid.cursor, vt100::Position::default());
+    assert_eq!(reset.primary_grid.saved_cursor, vt100::Position::default());
+    assert_eq!(reset.primary_grid.scroll_top, 0);
+    assert_eq!(reset.primary_grid.scroll_bottom, 3);
+    assert_eq!(reset.attributes, vt100::CellAttributes::default());
+    assert_eq!(reset.saved_attributes, vt100::CellAttributes::default());
+    assert_eq!(reset.modes, vt100::ScreenModes::default());
+
+    parser.process(b"mnew");
+    let live = parser.screen().state();
+    assert_eq!(live.primary_grid.rows[0].cells[0].contents, "m");
+    assert_eq!(
+        live.primary_grid.rows[0].cells[0].attributes.foreground,
+        vt100::Color::Default
+    );
+}

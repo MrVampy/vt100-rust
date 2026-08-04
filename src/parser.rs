@@ -79,6 +79,18 @@ impl<CB: crate::callbacks::Callbacks> Parser<CB> {
         self.parser.advance(&mut self.screen, bytes);
     }
 
+    /// Resets the live terminal state for a replacement process while retaining
+    /// the primary buffer's scrollback.
+    ///
+    /// The parser returns to ground state, both live grids are cleared, cursor
+    /// and drawing state return to their defaults, and application modes are
+    /// disabled. Retained primary scrollback and its stable coordinates remain
+    /// unchanged.
+    pub fn reset_for_new_process(&mut self) {
+        self.parser = vte::Parser::new();
+        self.screen.screen.reset_for_new_process();
+    }
+
     /// Returns a reference to a [`Screen`](crate::Screen) object containing
     /// the terminal state.
     #[must_use]

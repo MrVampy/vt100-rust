@@ -147,6 +147,18 @@ impl Screen {
         }
     }
 
+    pub(crate) fn reset_for_new_process(&mut self) {
+        self.grid.clear();
+        self.grid.set_scrollback(0);
+        self.alternate_grid.clear();
+        self.alternate_grid.set_scrollback(0);
+        self.attrs = crate::attrs::Attrs::default();
+        self.saved_attrs = crate::attrs::Attrs::default();
+        self.modes = 0;
+        self.mouse_protocol_mode = MouseProtocolMode::default();
+        self.mouse_protocol_encoding = MouseProtocolEncoding::default();
+    }
+
     /// Resizes the terminal.
     pub fn set_size(&mut self, rows: u16, cols: u16) {
         self.grid.set_size(crate::grid::Size { rows, cols });
