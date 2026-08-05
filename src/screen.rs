@@ -147,7 +147,15 @@ impl Screen {
         }
     }
 
-    pub(crate) fn reset_for_new_process(&mut self) {
+    pub(crate) fn reset_for_new_process(
+        &mut self,
+        policy: crate::NewProcessScreenPolicy,
+    ) {
+        if policy
+            == crate::NewProcessScreenPolicy::PreserveLiveScreenAsScrollback
+        {
+            self.grid.preserve_live_rows_as_scrollback();
+        }
         self.grid.clear();
         self.grid.set_scrollback(0);
         self.alternate_grid.clear();

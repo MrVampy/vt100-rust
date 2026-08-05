@@ -272,6 +272,26 @@ impl Grid {
         self.scrollback_offset = rows.min(self.scrollback.len());
     }
 
+    pub(crate) fn preserve_live_rows_as_scrollback(&mut self) {
+        let retained_rows = self
+            .rows
+            .iter()
+            .rposition(|row| !row.is_default_blank())
+            .map_or(0, |index| index + 1);
+        let mut rows = self
+            .rows
+            .iter()
+            .take(retained_rows)
+            .cloned()
+            .collect::<Vec<_>>();
+        if let Some(last) = rows.last_mut() {
+            last.wrap(false);
+        }
+        for row in rows {
+            self.push_scrollback_row(row);
+        }
+    }
+
     pub fn write_contents(&self, contents: &mut String) {
         let mut wrapping = false;
         for row in self.visible_rows() {
@@ -644,22 +664,24 @@ impl Grid {
             // any scrollback. With `scroll_top == 0`, full-screen scrolling is unchanged and we
             // save only when the region includes the screen top (matching xterm).
             if self.scroll_top == 0 {
-                if self.scrollback_len > 0 {
-                    self.scrollback.push_back(removed);
-                    while self.scrollback.len() > self.scrollback_len {
-                        self.scrollback.pop_front();
-                        self.scrollback_top =
-                            self.scrollback_top.saturating_add(1);
-                    }
-                } else {
-                    self.scrollback_top =
-                        self.scrollback_top.saturating_add(1);
-                }
-                if self.scrollback_offset > 0 {
-                    self.scrollback_offset =
-                        self.scrollback.len().min(self.scrollback_offset + 1);
-                }
+                self.push_scrollback_row(removed);
             }
+        }
+    }
+
+    fn push_scrollback_row(&mut self, row: crate::row::Row) {
+        if self.scrollback_len > 0 {
+            self.scrollback.push_back(row);
+            while self.scrollback.len() > self.scrollback_len {
+                self.scrollback.pop_front();
+                self.scrollback_top = self.scrollback_top.saturating_add(1);
+            }
+        } else {
+            self.scrollback_top = self.scrollback_top.saturating_add(1);
+        }
+        if self.scrollback_offset > 0 {
+            self.scrollback_offset =
+                self.scrollback.len().min(self.scrollback_offset + 1);
         }
     }
 

@@ -109,6 +109,11 @@ impl Row {
         self.wrapped
     }
 
+    pub(crate) fn is_default_blank(&self) -> bool {
+        let default_cell = crate::Cell::new();
+        !self.wrapped && self.cells.iter().all(|cell| cell == &default_cell)
+    }
+
     pub fn clear_wide(&mut self, col: u16) {
         let cell = &self.cells[usize::from(col)];
         let other = if cell.is_wide() {

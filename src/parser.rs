@@ -1,3 +1,13 @@
+/// Selects how the primary live screen is treated when a new process replaces
+/// the process that produced the restored terminal state.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NewProcessScreenPolicy {
+    /// Discard the old live screen before accepting output from the new process.
+    DiscardLiveScreen,
+    /// Move meaningful old live rows into scrollback before clearing the screen.
+    PreserveLiveScreenAsScrollback,
+}
+
 /// A parser for terminal output which produces an in-memory representation of
 /// the terminal contents.
 pub struct Parser<CB: crate::callbacks::Callbacks = ()> {
@@ -79,16 +89,16 @@ impl<CB: crate::callbacks::Callbacks> Parser<CB> {
         self.parser.advance(&mut self.screen, bytes);
     }
 
-    /// Resets the live terminal state for a replacement process while retaining
-    /// the primary buffer's scrollback.
+    /// Resets terminal state for a replacement process according to `policy`.
     ///
     /// The parser returns to ground state, both live grids are cleared, cursor
     /// and drawing state return to their defaults, and application modes are
-    /// disabled. Retained primary scrollback and its stable coordinates remain
-    /// unchanged.
-    pub fn reset_for_new_process(&mut self) {
+    /// disabled. Existing primary scrollback and its stable coordinates are
+    /// retained. The selected policy determines whether meaningful rows from
+    /// the primary live screen are appended to that scrollback first.
+    pub fn reset_for_new_process(&mut self, policy: NewProcessScreenPolicy) {
         self.parser = vte::Parser::new();
-        self.screen.screen.reset_for_new_process();
+        self.screen.screen.reset_for_new_process(policy);
     }
 
     /// Returns a reference to a [`Screen`](crate::Screen) object containing

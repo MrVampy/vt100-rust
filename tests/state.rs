@@ -1,4 +1,4 @@
-use vt100::{CellKind, Parser};
+use vt100::{CellKind, NewProcessScreenPolicy, Parser};
 
 #[test]
 fn round_trips_both_buffers_history_modes_and_pending_wrap() {
@@ -66,7 +66,7 @@ fn replacement_process_reset_preserves_scrollback_and_clears_live_state() {
     let before = parser.screen().state();
     assert!(!before.primary_grid.scrollback.is_empty());
 
-    parser.reset_for_new_process();
+    parser.reset_for_new_process(NewProcessScreenPolicy::DiscardLiveScreen);
     let reset = parser.screen().state();
 
     assert_eq!(
@@ -103,4 +103,37 @@ fn replacement_process_reset_preserves_scrollback_and_clears_live_state() {
         live.primary_grid.rows[0].cells[0].attributes.foreground,
         vt100::Color::Default
     );
+}
+
+#[test]
+fn replacement_process_can_preserve_meaningful_live_rows_as_scrollback() {
+    let mut parser = Parser::new(5, 12, 8);
+    parser.process(b"one\r\n\r\ntwo");
+    let before = parser.screen().state();
+    assert!(before.primary_grid.scrollback.is_empty());
+
+    parser.reset_for_new_process(
+        NewProcessScreenPolicy::PreserveLiveScreenAsScrollback,
+    );
+    let reset = parser.screen().state();
+
+    assert_eq!(reset.primary_grid.scrollback.len(), 3);
+    assert_eq!(reset.primary_grid.scrollback[0].cells[0].contents, "o");
+    assert!(reset.primary_grid.scrollback[1]
+        .cells
+        .iter()
+        .all(|cell| cell.contents.is_empty()));
+    assert_eq!(reset.primary_grid.scrollback[2].cells[0].contents, "t");
+    assert!(!reset.primary_grid.scrollback[2].wrapped);
+    assert!(reset
+        .primary_grid
+        .rows
+        .iter()
+        .flat_map(|row| &row.cells)
+        .all(|cell| cell.contents.is_empty()));
+
+    parser.process(b"new");
+    let live = parser.screen().state();
+    assert_eq!(live.primary_grid.rows[0].cells[0].contents, "n");
+    assert_eq!(live.primary_grid.scrollback, reset.primary_grid.scrollback);
 }
