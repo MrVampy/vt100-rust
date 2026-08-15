@@ -6,7 +6,8 @@ fn round_trips_both_buffers_history_modes_and_pending_wrap() {
     parser.process(b"one\r\ntwo\r\nthree\r\nfour\r\nfive");
     parser.process("\r\nwide \u{754c}\u{0301}".as_bytes());
     parser.process(b"\x1b[1;34m\x1b7\x1b[?1h\x1b[?2004h");
-    parser.process(b"\x1b[?1049h\x1b[?25lalternate");
+    parser.screen_mut().enter_retained_alternate_screen();
+    parser.process(b"\x1b[?25lalternate");
     parser.process(b"\r\none\r\ntwo\r\nthree\r\nfour\r\nfive");
     parser.process(b"\x1b[4;8H!");
 
@@ -26,10 +27,10 @@ fn round_trips_both_buffers_history_modes_and_pending_wrap() {
 }
 
 #[test]
-fn alternate_history_is_bounded_and_a_new_1049_lifetime_resets_it() {
+fn retained_alternate_history_is_bounded_and_each_lifetime_resets_it() {
     let mut parser = Parser::new(3, 12, 4);
     parser.process(b"shell");
-    parser.process(b"\x1b[?1049h");
+    parser.screen_mut().enter_retained_alternate_screen();
     for line in 0..8 {
         parser.process(format!("alternate-{line}\r\n").as_bytes());
     }
@@ -39,14 +40,32 @@ fn alternate_history_is_bounded_and_a_new_1049_lifetime_resets_it() {
     assert!(first.alternate_grid.scrollback_top > 0);
     assert!(first.primary_grid.scrollback.is_empty());
 
-    parser.process(b"\x1b[?1049l");
+    parser.screen_mut().exit_retained_alternate_screen();
     assert_eq!(parser.screen().contents(), "shell");
-    parser.process(b"\x1b[?1049hnew");
+    parser.screen_mut().enter_retained_alternate_screen();
+    parser.process(b"new");
 
     let second = parser.screen().state();
     assert!(second.alternate_grid.scrollback.is_empty());
     assert_eq!(second.alternate_grid.scrollback_top, 0);
     assert!(parser.screen().contents().starts_with("new"));
+}
+
+#[test]
+fn standard_1049_alternate_screen_remains_history_free() {
+    let mut parser = Parser::new(3, 12, 4);
+    parser.process(b"shell\x1b[?1049h");
+    for line in 0..8 {
+        parser.process(format!("alternate-{line}\r\n").as_bytes());
+    }
+
+    let alternate = parser.screen().state();
+    assert_eq!(alternate.alternate_grid.scrollback_limit, 0);
+    assert!(alternate.alternate_grid.scrollback.is_empty());
+    assert!(alternate.alternate_grid.scrollback_top > 0);
+
+    parser.process(b"\x1b[?1049l");
+    assert_eq!(parser.screen().contents(), "shell");
 }
 
 #[test]
@@ -88,7 +107,8 @@ fn replacement_process_reset_preserves_scrollback_and_clears_live_state() {
     let mut parser = Parser::new(4, 8, 8);
     parser.process(b"one\r\ntwo\r\nthree\r\nfour\r\nfive\r\nsix");
     parser.process(b"\x1b[1;34m\x1b7\x1b[?1h\x1b[?2004h");
-    parser.process(b"\x1b[?1049h\x1b[?25lalternate\x1b[31");
+    parser.screen_mut().enter_retained_alternate_screen();
+    parser.process(b"\x1b[?25lalternate\x1b[31");
     let before = parser.screen().state();
     assert!(!before.primary_grid.scrollback.is_empty());
     assert_eq!(
@@ -113,10 +133,7 @@ fn replacement_process_reset_preserves_scrollback_and_clears_live_state() {
     );
     assert!(reset.alternate_grid.scrollback.is_empty());
     assert_eq!(reset.alternate_grid.scrollback_top, 0);
-    assert_eq!(
-        reset.alternate_grid.scrollback_limit,
-        reset.primary_grid.scrollback_limit
-    );
+    assert_eq!(reset.alternate_grid.scrollback_limit, 0);
     assert!(reset
         .primary_grid
         .rows

@@ -130,6 +130,16 @@ impl Grid {
         self.scrollback_offset = 0;
     }
 
+    pub(crate) fn set_scrollback_len(&mut self, scrollback_len: usize) {
+        self.scrollback_len = scrollback_len;
+        while self.scrollback.len() > self.scrollback_len {
+            self.scrollback.pop_front();
+            self.scrollback_top = self.scrollback_top.saturating_add(1);
+        }
+        self.scrollback_offset =
+            self.scrollback_offset.min(self.scrollback.len());
+    }
+
     pub fn size(&self) -> Size {
         self.size
     }

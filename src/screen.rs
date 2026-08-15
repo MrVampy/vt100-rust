@@ -73,7 +73,7 @@ impl Screen {
         grid.allocate_rows();
         Self {
             grid,
-            alternate_grid: crate::grid::Grid::new(size, scrollback_len),
+            alternate_grid: crate::grid::Grid::new(size, 0),
 
             attrs: crate::attrs::Attrs::default(),
             saved_attrs: crate::attrs::Attrs::default(),
@@ -160,6 +160,7 @@ impl Screen {
         self.grid.set_scrollback(0);
         self.alternate_grid.clear();
         self.alternate_grid.clear_scrollback();
+        self.alternate_grid.set_scrollback_len(0);
         self.alternate_grid.set_scrollback(0);
         self.attrs = crate::attrs::Attrs::default();
         self.saved_attrs = crate::attrs::Attrs::default();
@@ -659,6 +660,39 @@ impl Screen {
     #[must_use]
     pub fn alternate_screen(&self) -> bool {
         self.mode(MODE_ALTERNATE_SCREEN)
+    }
+
+    /// Enters an alternate presentation whose independently bounded history
+    /// uses the primary buffer's scrollback limit.
+    ///
+    /// Unlike DEC private mode 1049, this is an opt-in multiplexer
+    /// presentation for inline applications that need both exact primary
+    /// screen restoration and scrollable output while they are active.
+    pub fn enter_retained_alternate_screen(&mut self) {
+        if self.mode(MODE_ALTERNATE_SCREEN) {
+            return;
+        }
+        self.decsc();
+        self.alternate_grid.clear();
+        self.alternate_grid.clear_scrollback();
+        self.alternate_grid
+            .set_scrollback_len(self.grid.scrollback_len());
+        self.enter_alternate_grid();
+    }
+
+    /// Leaves an alternate presentation entered by
+    /// [`Self::enter_retained_alternate_screen`] and restores the primary
+    /// cursor and attributes.
+    pub fn exit_retained_alternate_screen(&mut self) {
+        if !self.mode(MODE_ALTERNATE_SCREEN)
+            || self.alternate_grid.scrollback_len() == 0
+        {
+            return;
+        }
+        self.exit_alternate_grid();
+        self.decrc();
+        self.alternate_grid.clear_scrollback();
+        self.alternate_grid.set_scrollback_len(0);
     }
 
     /// Returns whether the terminal should be in application keypad mode.
@@ -1277,6 +1311,7 @@ impl Screen {
                     self.decsc();
                     self.alternate_grid.clear();
                     self.alternate_grid.clear_scrollback();
+                    self.alternate_grid.set_scrollback_len(0);
                     self.enter_alternate_grid();
                 }
                 [2004] => self.set_mode(MODE_BRACKETED_PASTE),

@@ -33,11 +33,12 @@ impl ScreenState {
         validate_attributes(&self.saved_attributes)?;
         validate_grid(self.rows, self.columns, &self.primary_grid)?;
         validate_grid(self.rows, self.columns, &self.alternate_grid)?;
-        if self.alternate_grid.scrollback_limit
-            != self.primary_grid.scrollback_limit
+        if self.alternate_grid.scrollback_limit != 0
+            && self.alternate_grid.scrollback_limit
+                != self.primary_grid.scrollback_limit
         {
             return Err(ScreenStateError::new(
-                "screen buffers have different scrollback limits",
+                "alternate grid scrollback limit is invalid",
             ));
         }
         Ok(())
