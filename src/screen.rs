@@ -73,7 +73,7 @@ impl Screen {
         grid.allocate_rows();
         Self {
             grid,
-            alternate_grid: crate::grid::Grid::new(size, 0),
+            alternate_grid: crate::grid::Grid::new(size, scrollback_len),
 
             attrs: crate::attrs::Attrs::default(),
             saved_attrs: crate::attrs::Attrs::default(),
@@ -159,6 +159,7 @@ impl Screen {
         self.grid.clear();
         self.grid.set_scrollback(0);
         self.alternate_grid.clear();
+        self.alternate_grid.clear_scrollback();
         self.alternate_grid.set_scrollback(0);
         self.attrs = crate::attrs::Attrs::default();
         self.saved_attrs = crate::attrs::Attrs::default();
@@ -1275,6 +1276,7 @@ impl Screen {
                 [1049] => {
                     self.decsc();
                     self.alternate_grid.clear();
+                    self.alternate_grid.clear_scrollback();
                     self.enter_alternate_grid();
                 }
                 [2004] => self.set_mode(MODE_BRACKETED_PASTE),

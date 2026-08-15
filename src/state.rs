@@ -9,7 +9,7 @@ pub struct ScreenState {
     pub columns: u16,
     /// The primary screen grid and retained history.
     pub primary_grid: GridState,
-    /// The alternate screen grid.
+    /// The alternate screen grid and its independently retained history.
     pub alternate_grid: GridState,
     /// Attributes used for newly printed cells.
     pub attributes: CellAttributes,
@@ -33,11 +33,11 @@ impl ScreenState {
         validate_attributes(&self.saved_attributes)?;
         validate_grid(self.rows, self.columns, &self.primary_grid)?;
         validate_grid(self.rows, self.columns, &self.alternate_grid)?;
-        if self.alternate_grid.scrollback_limit != 0
-            || !self.alternate_grid.scrollback.is_empty()
+        if self.alternate_grid.scrollback_limit
+            != self.primary_grid.scrollback_limit
         {
             return Err(ScreenStateError::new(
-                "alternate grid cannot retain scrollback",
+                "screen buffers have different scrollback limits",
             ));
         }
         Ok(())

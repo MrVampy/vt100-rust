@@ -124,6 +124,12 @@ impl Grid {
         self.saved_origin_mode = false;
     }
 
+    pub(crate) fn clear_scrollback(&mut self) {
+        self.scrollback.clear();
+        self.scrollback_top = 0;
+        self.scrollback_offset = 0;
+    }
+
     pub fn size(&self) -> Size {
         self.size
     }

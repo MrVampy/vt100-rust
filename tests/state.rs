@@ -7,11 +7,13 @@ fn round_trips_both_buffers_history_modes_and_pending_wrap() {
     parser.process("\r\nwide \u{754c}\u{0301}".as_bytes());
     parser.process(b"\x1b[1;34m\x1b7\x1b[?1h\x1b[?2004h");
     parser.process(b"\x1b[?1049h\x1b[?25lalternate");
+    parser.process(b"\r\none\r\ntwo\r\nthree\r\nfour\r\nfive");
     parser.process(b"\x1b[4;8H!");
 
     let state = parser.screen().state();
     state.validate().unwrap();
     assert!(state.primary_grid.scrollback.len() >= 2);
+    assert!(!state.alternate_grid.scrollback.is_empty());
     assert!(state
         .primary_grid
         .rows
@@ -21,6 +23,30 @@ fn round_trips_both_buffers_history_modes_and_pending_wrap() {
 
     let restored = Parser::from_screen_state(state.clone()).unwrap();
     assert_eq!(restored.screen().state(), state);
+}
+
+#[test]
+fn alternate_history_is_bounded_and_a_new_1049_lifetime_resets_it() {
+    let mut parser = Parser::new(3, 12, 4);
+    parser.process(b"shell");
+    parser.process(b"\x1b[?1049h");
+    for line in 0..8 {
+        parser.process(format!("alternate-{line}\r\n").as_bytes());
+    }
+
+    let first = parser.screen().state();
+    assert_eq!(first.alternate_grid.scrollback.len(), 4);
+    assert!(first.alternate_grid.scrollback_top > 0);
+    assert!(first.primary_grid.scrollback.is_empty());
+
+    parser.process(b"\x1b[?1049l");
+    assert_eq!(parser.screen().contents(), "shell");
+    parser.process(b"\x1b[?1049hnew");
+
+    let second = parser.screen().state();
+    assert!(second.alternate_grid.scrollback.is_empty());
+    assert_eq!(second.alternate_grid.scrollback_top, 0);
+    assert!(parser.screen().contents().starts_with("new"));
 }
 
 #[test]
@@ -65,6 +91,10 @@ fn replacement_process_reset_preserves_scrollback_and_clears_live_state() {
     parser.process(b"\x1b[?1049h\x1b[?25lalternate\x1b[31");
     let before = parser.screen().state();
     assert!(!before.primary_grid.scrollback.is_empty());
+    assert_eq!(
+        before.alternate_grid.scrollback_limit,
+        before.primary_grid.scrollback_limit
+    );
 
     parser.reset_for_new_process(NewProcessScreenPolicy::DiscardLiveScreen);
     let reset = parser.screen().state();
@@ -80,6 +110,12 @@ fn replacement_process_reset_preserves_scrollback_and_clears_live_state() {
     assert_eq!(
         reset.primary_grid.scrollback_limit,
         before.primary_grid.scrollback_limit
+    );
+    assert!(reset.alternate_grid.scrollback.is_empty());
+    assert_eq!(reset.alternate_grid.scrollback_top, 0);
+    assert_eq!(
+        reset.alternate_grid.scrollback_limit,
+        reset.primary_grid.scrollback_limit
     );
     assert!(reset
         .primary_grid
