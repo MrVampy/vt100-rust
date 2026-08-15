@@ -684,9 +684,7 @@ impl Screen {
     /// [`Self::enter_retained_alternate_screen`] and restores the primary
     /// cursor and attributes.
     pub fn exit_retained_alternate_screen(&mut self) {
-        if !self.mode(MODE_ALTERNATE_SCREEN)
-            || self.alternate_grid.scrollback_len() == 0
-        {
+        if !self.mode(MODE_ALTERNATE_SCREEN) {
             return;
         }
         self.exit_alternate_grid();

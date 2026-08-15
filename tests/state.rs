@@ -52,6 +52,19 @@ fn retained_alternate_history_is_bounded_and_each_lifetime_resets_it() {
 }
 
 #[test]
+fn retained_alternate_screen_with_no_history_still_restores_the_primary_screen(
+) {
+    let mut parser = Parser::new(3, 12, 0);
+    parser.process(b"shell");
+    parser.screen_mut().enter_retained_alternate_screen();
+    parser.process(b"agent");
+    parser.screen_mut().exit_retained_alternate_screen();
+
+    assert!(!parser.screen().alternate_screen());
+    assert_eq!(parser.screen().contents(), "shell");
+}
+
+#[test]
 fn standard_1049_alternate_screen_remains_history_free() {
     let mut parser = Parser::new(3, 12, 4);
     parser.process(b"shell\x1b[?1049h");
