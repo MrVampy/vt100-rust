@@ -149,6 +149,26 @@ pub enum ActiveBuffer {
     Alternate,
 }
 
+/// The cursor shape and blink behavior requested by the terminal application.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum CursorStyle {
+    /// Use the presentation terminal's configured default cursor style.
+    #[default]
+    Default,
+    /// A blinking block cursor.
+    BlinkingBlock,
+    /// A steady block cursor.
+    SteadyBlock,
+    /// A blinking underline cursor.
+    BlinkingUnderline,
+    /// A steady underline cursor.
+    SteadyUnderline,
+    /// A blinking bar cursor.
+    BlinkingBar,
+    /// A steady bar cursor.
+    SteadyBar,
+}
+
 /// Input and presentation modes represented by the emulator.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ScreenModes {
@@ -156,6 +176,8 @@ pub struct ScreenModes {
     pub active_buffer: ActiveBuffer,
     /// Whether the cursor is visible.
     pub cursor_visible: bool,
+    /// The cursor style requested by the terminal application.
+    pub cursor_style: CursorStyle,
     /// Whether application keypad mode is enabled.
     pub application_keypad: bool,
     /// Whether application cursor mode is enabled.
@@ -173,6 +195,7 @@ impl Default for ScreenModes {
         Self {
             active_buffer: ActiveBuffer::Primary,
             cursor_visible: true,
+            cursor_style: CursorStyle::Default,
             application_keypad: false,
             application_cursor: false,
             bracketed_paste: false,

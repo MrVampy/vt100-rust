@@ -187,6 +187,19 @@ impl<CB: crate::callbacks::Callbacks> vte::Perform for WrappedScreen<CB> {
                     );
                 }
             },
+            Some(b' ') if c == 'q' => {
+                if let Some(style) = cursor_style(params) {
+                    self.screen.decscusr(style);
+                } else {
+                    self.callbacks.unhandled_csi(
+                        &mut self.screen,
+                        Some(b' '),
+                        intermediates.get(1).copied(),
+                        &params.iter().collect::<Vec<_>>(),
+                        c,
+                    );
+                }
+            }
             Some(i) => {
                 self.callbacks.unhandled_csi(
                     &mut self.screen,
@@ -239,6 +252,28 @@ impl<CB: crate::callbacks::Callbacks> vte::Perform for WrappedScreen<CB> {
                 self.callbacks.unhandled_osc(&mut self.screen, params);
             }
         }
+    }
+}
+
+fn cursor_style(params: &vte::Params) -> Option<crate::CursorStyle> {
+    let mut values = params.iter();
+    let parameter = values.next().map_or(Some(0), |value| match value {
+        [] => Some(0),
+        [parameter] => Some(*parameter),
+        _ => None,
+    })?;
+    if values.next().is_some() {
+        return None;
+    }
+    match parameter {
+        0 => Some(crate::CursorStyle::Default),
+        1 => Some(crate::CursorStyle::BlinkingBlock),
+        2 => Some(crate::CursorStyle::SteadyBlock),
+        3 => Some(crate::CursorStyle::BlinkingUnderline),
+        4 => Some(crate::CursorStyle::SteadyUnderline),
+        5 => Some(crate::CursorStyle::BlinkingBar),
+        6 => Some(crate::CursorStyle::SteadyBar),
+        _ => None,
     }
 }
 

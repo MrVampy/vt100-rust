@@ -64,6 +64,33 @@ impl BufWrite for RestoreCursor {
     }
 }
 
+#[derive(Debug)]
+#[must_use = "this struct does nothing unless you call write_buf"]
+pub struct SetCursorStyle {
+    style: crate::CursorStyle,
+}
+
+impl SetCursorStyle {
+    pub fn new(style: crate::CursorStyle) -> Self {
+        Self { style }
+    }
+}
+
+impl BufWrite for SetCursorStyle {
+    fn write_buf(&self, buf: &mut Vec<u8>) {
+        let parameter = match self.style {
+            crate::CursorStyle::Default => b'0',
+            crate::CursorStyle::BlinkingBlock => b'1',
+            crate::CursorStyle::SteadyBlock => b'2',
+            crate::CursorStyle::BlinkingUnderline => b'3',
+            crate::CursorStyle::SteadyUnderline => b'4',
+            crate::CursorStyle::BlinkingBar => b'5',
+            crate::CursorStyle::SteadyBar => b'6',
+        };
+        buf.extend_from_slice(&[0x1b, b'[', parameter, b' ', b'q']);
+    }
+}
+
 #[derive(Default, Debug)]
 #[must_use = "this struct does nothing unless you call write_buf"]
 pub struct MoveTo {

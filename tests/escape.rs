@@ -58,6 +58,56 @@ fn vb() {
 }
 
 #[test]
+fn decscusr() {
+    struct State {
+        unsupported: usize,
+    }
+
+    impl vt100::Callbacks for State {
+        fn unhandled_csi(
+            &mut self,
+            _: &mut vt100::Screen,
+            _: Option<u8>,
+            _: Option<u8>,
+            _: &[&[u16]],
+            _: char,
+        ) {
+            self.unsupported += 1;
+        }
+    }
+
+    let mut parser = vt100::Parser::new_with_callbacks(
+        24,
+        80,
+        0,
+        State { unsupported: 0 },
+    );
+    for (sequence, expected) in [
+        (b"\x1b[ q".as_slice(), vt100::CursorStyle::Default),
+        (b"\x1b[0 q".as_slice(), vt100::CursorStyle::Default),
+        (b"\x1b[1 q".as_slice(), vt100::CursorStyle::BlinkingBlock),
+        (b"\x1b[2 q".as_slice(), vt100::CursorStyle::SteadyBlock),
+        (
+            b"\x1b[3 q".as_slice(),
+            vt100::CursorStyle::BlinkingUnderline,
+        ),
+        (b"\x1b[4 q".as_slice(), vt100::CursorStyle::SteadyUnderline),
+        (b"\x1b[5 q".as_slice(), vt100::CursorStyle::BlinkingBar),
+        (b"\x1b[6 q".as_slice(), vt100::CursorStyle::SteadyBar),
+    ] {
+        parser.process(sequence);
+        assert_eq!(parser.screen().cursor_style(), expected);
+    }
+
+    parser.process(b"\x1b[7 q");
+    assert_eq!(
+        parser.screen().cursor_style(),
+        vt100::CursorStyle::SteadyBar
+    );
+    assert_eq!(parser.callbacks().unsupported, 1);
+}
+
+#[test]
 fn decsc() {
     helpers::fixture("decsc");
 }

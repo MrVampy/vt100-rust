@@ -64,6 +64,7 @@ pub use cell::Cell;
 pub use parser::{NewProcessScreenPolicy, Parser};
 pub use screen::{MouseProtocolEncoding, MouseProtocolMode, Screen};
 pub use state::{
-    ActiveBuffer, CellAttributes, CellKind, CellState, GridState, Position,
-    RowState, ScreenModes, ScreenState, ScreenStateError,
+    ActiveBuffer, CellAttributes, CellKind, CellState, CursorStyle,
+    GridState, Position, RowState, ScreenModes, ScreenState,
+    ScreenStateError,
 };

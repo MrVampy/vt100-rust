@@ -60,6 +60,7 @@ pub struct Screen {
     saved_attrs: crate::attrs::Attrs,
 
     modes: u8,
+    cursor_style: crate::CursorStyle,
     mouse_protocol_mode: MouseProtocolMode,
     mouse_protocol_encoding: MouseProtocolEncoding,
 }
@@ -79,6 +80,7 @@ impl Screen {
             saved_attrs: crate::attrs::Attrs::default(),
 
             modes: 0,
+            cursor_style: crate::CursorStyle::default(),
             mouse_protocol_mode: MouseProtocolMode::default(),
             mouse_protocol_encoding: MouseProtocolEncoding::default(),
         }
@@ -101,6 +103,7 @@ impl Screen {
                     crate::ActiveBuffer::Primary
                 },
                 cursor_visible: !self.mode(MODE_HIDE_CURSOR),
+                cursor_style: self.cursor_style,
                 application_keypad: self.mode(MODE_APPLICATION_KEYPAD),
                 application_cursor: self.mode(MODE_APPLICATION_CURSOR),
                 bracketed_paste: self.mode(MODE_BRACKETED_PASTE),
@@ -142,6 +145,7 @@ impl Screen {
                 state.saved_attributes,
             ),
             modes,
+            cursor_style: state.modes.cursor_style,
             mouse_protocol_mode: state.modes.mouse_protocol_mode,
             mouse_protocol_encoding: state.modes.mouse_protocol_encoding,
         }
@@ -165,6 +169,7 @@ impl Screen {
         self.attrs = crate::attrs::Attrs::default();
         self.saved_attrs = crate::attrs::Attrs::default();
         self.modes = 0;
+        self.cursor_style = crate::CursorStyle::default();
         self.mouse_protocol_mode = MouseProtocolMode::default();
         self.mouse_protocol_encoding = MouseProtocolEncoding::default();
     }
@@ -604,6 +609,12 @@ impl Screen {
         (pos.row, pos.col)
     }
 
+    /// Returns the cursor style requested by the terminal application.
+    #[must_use]
+    pub const fn cursor_style(&self) -> crate::CursorStyle {
+        self.cursor_style
+    }
+
     /// Returns terminal escape sequences sufficient to set the current
     /// cursor state of the terminal.
     ///
@@ -630,6 +641,8 @@ impl Screen {
 
     fn write_cursor_state_formatted(&self, contents: &mut Vec<u8>) {
         crate::term::HideCursor::new(self.hide_cursor()).write_buf(contents);
+        crate::term::SetCursorStyle::new(self.cursor_style)
+            .write_buf(contents);
         self.grid()
             .write_cursor_position_formatted(contents, None, None);
 
@@ -1487,6 +1500,11 @@ impl Screen {
     // CSI r
     pub(crate) fn decstbm(&mut self, (top, bottom): (u16, u16)) {
         self.grid_mut().set_scroll_region(top - 1, bottom - 1);
+    }
+
+    // CSI Ps SP q
+    pub(crate) fn decscusr(&mut self, style: crate::CursorStyle) {
+        self.cursor_style = style;
     }
 }
 
