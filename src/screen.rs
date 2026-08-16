@@ -6,6 +6,7 @@ const MODE_APPLICATION_CURSOR: u8 = 0b0000_0010;
 const MODE_HIDE_CURSOR: u8 = 0b0000_0100;
 const MODE_ALTERNATE_SCREEN: u8 = 0b0000_1000;
 const MODE_BRACKETED_PASTE: u8 = 0b0001_0000;
+const MODE_FOCUS_REPORTING: u8 = 0b0010_0000;
 
 /// The xterm mouse handling mode currently in use.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
@@ -107,6 +108,7 @@ impl Screen {
                 application_keypad: self.mode(MODE_APPLICATION_KEYPAD),
                 application_cursor: self.mode(MODE_APPLICATION_CURSOR),
                 bracketed_paste: self.mode(MODE_BRACKETED_PASTE),
+                focus_reporting: self.mode(MODE_FOCUS_REPORTING),
                 mouse_protocol_mode: self.mouse_protocol_mode,
                 mouse_protocol_encoding: self.mouse_protocol_encoding,
             },
@@ -133,6 +135,9 @@ impl Screen {
         }
         if state.modes.bracketed_paste {
             modes |= MODE_BRACKETED_PASTE;
+        }
+        if state.modes.focus_reporting {
+            modes |= MODE_FOCUS_REPORTING;
         }
         Self {
             grid: crate::grid::Grid::from_state(size, state.primary_grid),
@@ -492,6 +497,7 @@ impl Screen {
     /// * application keypad
     /// * application cursor
     /// * bracketed paste
+    /// * focus reporting
     /// * xterm mouse support
     #[must_use]
     pub fn input_mode_formatted(&self) -> Vec<u8> {
@@ -510,6 +516,8 @@ impl Screen {
         )
         .write_buf(contents);
         crate::term::BracketedPaste::new(self.mode(MODE_BRACKETED_PASTE))
+            .write_buf(contents);
+        crate::term::FocusReporting::new(self.mode(MODE_FOCUS_REPORTING))
             .write_buf(contents);
         crate::term::MouseProtocolMode::new(
             self.mouse_protocol_mode,
@@ -553,6 +561,11 @@ impl Screen {
         if self.mode(MODE_BRACKETED_PASTE) != prev.mode(MODE_BRACKETED_PASTE)
         {
             crate::term::BracketedPaste::new(self.mode(MODE_BRACKETED_PASTE))
+                .write_buf(contents);
+        }
+        if self.mode(MODE_FOCUS_REPORTING) != prev.mode(MODE_FOCUS_REPORTING)
+        {
+            crate::term::FocusReporting::new(self.mode(MODE_FOCUS_REPORTING))
                 .write_buf(contents);
         }
         crate::term::MouseProtocolMode::new(
@@ -728,6 +741,13 @@ impl Screen {
     #[must_use]
     pub fn bracketed_paste(&self) -> bool {
         self.mode(MODE_BRACKETED_PASTE)
+    }
+
+    /// Returns whether terminal focus changes should be reported to the
+    /// application.
+    #[must_use]
+    pub fn focus_reporting(&self) -> bool {
+        self.mode(MODE_FOCUS_REPORTING)
     }
 
     /// Returns the currently active [`MouseProtocolMode`].
@@ -1312,6 +1332,7 @@ impl Screen {
                     self.set_mouse_mode(MouseProtocolMode::ButtonMotion);
                 }
                 [1003] => self.set_mouse_mode(MouseProtocolMode::AnyMotion),
+                [1004] => self.set_mode(MODE_FOCUS_REPORTING),
                 [1005] => {
                     self.set_mouse_encoding(MouseProtocolEncoding::Utf8);
                 }
@@ -1355,6 +1376,7 @@ impl Screen {
                 [1003] => {
                     self.clear_mouse_mode(MouseProtocolMode::AnyMotion);
                 }
+                [1004] => self.clear_mode(MODE_FOCUS_REPORTING),
                 [1005] => {
                     self.clear_mouse_encoding(MouseProtocolEncoding::Utf8);
                 }

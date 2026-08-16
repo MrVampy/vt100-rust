@@ -108,6 +108,22 @@ fn decscusr() {
 }
 
 #[test]
+fn focus_reporting() {
+    let mut parser = vt100::Parser::default();
+
+    parser.process(b"\x1b[?1004h");
+    assert!(parser.screen().focus_reporting());
+    assert!(parser
+        .screen()
+        .input_mode_formatted()
+        .windows(8)
+        .any(|bytes| bytes == b"\x1b[?1004h"));
+
+    parser.process(b"\x1b[?1004l");
+    assert!(!parser.screen().focus_reporting());
+}
+
+#[test]
 fn decsc() {
     helpers::fixture("decsc");
 }

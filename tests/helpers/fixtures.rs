@@ -65,6 +65,8 @@ pub struct FixtureScreen {
     hide_cursor: bool,
     #[serde(default, skip_serializing_if = "is_default")]
     bracketed_paste: bool,
+    #[serde(default, skip_serializing_if = "is_default")]
+    focus_reporting: bool,
     #[serde(
         default,
         deserialize_with = "deserialize_mouse_protocol_mode",
@@ -111,6 +113,7 @@ impl FixtureScreen {
             application_cursor: screen.application_cursor(),
             hide_cursor: screen.hide_cursor(),
             bracketed_paste: screen.bracketed_paste(),
+            focus_reporting: screen.focus_reporting(),
             mouse_protocol_mode: screen.mouse_protocol_mode(),
             mouse_protocol_encoding: screen.mouse_protocol_encoding(),
         }

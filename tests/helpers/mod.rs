@@ -106,6 +106,7 @@ pub fn compare_screens(
     is!(got.application_cursor(), expected.application_cursor());
     is!(got.hide_cursor(), expected.hide_cursor());
     is!(got.bracketed_paste(), expected.bracketed_paste());
+    is!(got.focus_reporting(), expected.focus_reporting());
     is!(got.mouse_protocol_mode(), expected.mouse_protocol_mode());
     is!(
         got.mouse_protocol_encoding(),

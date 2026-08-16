@@ -23,6 +23,7 @@ fn init() {
     assert!(!parser.screen().application_cursor());
     assert!(!parser.screen().hide_cursor());
     assert!(!parser.screen().bracketed_paste());
+    assert!(!parser.screen().focus_reporting());
     assert_eq!(
         parser.screen().mouse_protocol_mode(),
         vt100::MouseProtocolMode::None

@@ -184,6 +184,8 @@ pub struct ScreenModes {
     pub application_cursor: bool,
     /// Whether bracketed paste mode is enabled.
     pub bracketed_paste: bool,
+    /// Whether terminal focus changes should be reported to the application.
+    pub focus_reporting: bool,
     /// The active mouse reporting mode.
     pub mouse_protocol_mode: crate::MouseProtocolMode,
     /// The active mouse reporting encoding.
@@ -199,6 +201,7 @@ impl Default for ScreenModes {
             application_keypad: false,
             application_cursor: false,
             bracketed_paste: false,
+            focus_reporting: false,
             mouse_protocol_mode: crate::MouseProtocolMode::default(),
             mouse_protocol_encoding: crate::MouseProtocolEncoding::default(),
         }

@@ -5,7 +5,7 @@ fn round_trips_both_buffers_history_modes_and_pending_wrap() {
     let mut parser = Parser::new(4, 8, 8);
     parser.process(b"one\r\ntwo\r\nthree\r\nfour\r\nfive");
     parser.process("\r\nwide \u{754c}\u{0301}".as_bytes());
-    parser.process(b"\x1b[1;34m\x1b7\x1b[?1h\x1b[?2004h\x1b[5 q");
+    parser.process(b"\x1b[1;34m\x1b7\x1b[?1h\x1b[?2004h\x1b[?1004h\x1b[5 q");
     parser.screen_mut().enter_retained_alternate_screen();
     parser.process(b"\x1b[?25lalternate");
     parser.process(b"\r\none\r\ntwo\r\nthree\r\nfour\r\nfive");
@@ -22,6 +22,7 @@ fn round_trips_both_buffers_history_modes_and_pending_wrap() {
         .flat_map(|row| &row.cells)
         .any(|cell| cell.kind == CellKind::Wide));
     assert_eq!(state.modes.cursor_style, vt100::CursorStyle::BlinkingBar);
+    assert!(state.modes.focus_reporting);
 
     let restored = Parser::from_screen_state(state.clone()).unwrap();
     assert_eq!(restored.screen().state(), state);
