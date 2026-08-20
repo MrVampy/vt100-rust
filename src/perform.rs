@@ -5,6 +5,7 @@ const CLIPBOARD_SELECTOR: &[u8] = b"cpqs01234567";
 pub struct WrappedScreen<CB: crate::callbacks::Callbacks = ()> {
     pub screen: crate::screen::Screen,
     pub callbacks: CB,
+    screen_mutation_revision: u64,
 }
 
 impl WrappedScreen<()> {
@@ -15,7 +16,11 @@ impl WrappedScreen<()> {
 
 impl<CB: crate::callbacks::Callbacks> WrappedScreen<CB> {
     pub(crate) fn from_screen(screen: crate::Screen, callbacks: CB) -> Self {
-        Self { screen, callbacks }
+        Self {
+            screen,
+            callbacks,
+            screen_mutation_revision: 0,
+        }
     }
 
     pub fn new_with_callbacks(
@@ -30,7 +35,25 @@ impl<CB: crate::callbacks::Callbacks> WrappedScreen<CB> {
                 scrollback_len,
             ),
             callbacks,
+            screen_mutation_revision: 0,
         }
+    }
+
+    pub(crate) const fn screen_mutation_revision(&self) -> u64 {
+        self.screen_mutation_revision
+    }
+
+    pub(crate) fn mark_screen_mutation(&mut self) {
+        self.screen_mutation_revision =
+            self.screen_mutation_revision.saturating_add(1);
+    }
+
+    pub(crate) fn reset_for_new_process(
+        &mut self,
+        policy: crate::NewProcessScreenPolicy,
+    ) {
+        self.screen.reset_for_new_process(policy);
+        self.mark_screen_mutation();
     }
 }
 
@@ -40,6 +63,7 @@ impl<CB: crate::callbacks::Callbacks> vte::Perform for WrappedScreen<CB> {
             self.callbacks.unhandled_char(&mut self.screen, c);
         } else {
             self.screen.text(c);
+            self.mark_screen_mutation();
         }
     }
 
@@ -56,6 +80,9 @@ impl<CB: crate::callbacks::Callbacks> vte::Perform for WrappedScreen<CB> {
             // it shouldn't count as an "error"
             14 | 15 => {}
             _ => self.callbacks.unhandled_control(&mut self.screen, b),
+        };
+        if matches!(b, 8..=13) {
+            self.mark_screen_mutation();
         }
     }
 
@@ -84,6 +111,9 @@ impl<CB: crate::callbacks::Callbacks> vte::Perform for WrappedScreen<CB> {
                         b,
                     );
                 }
+            };
+            if matches!(b, b'7' | b'8' | b'=' | b'>' | b'M' | b'c') {
+                self.mark_screen_mutation();
             }
         }
     }
@@ -95,6 +125,23 @@ impl<CB: crate::callbacks::Callbacks> vte::Perform for WrappedScreen<CB> {
         _ignore: bool,
         c: char,
     ) {
+        macro_rules! mutate {
+            ($operation:expr) => {{
+                $operation;
+                self.screen_mutation_revision =
+                    self.screen_mutation_revision.saturating_add(1);
+            }};
+        }
+        macro_rules! mutate_stamp {
+            ($operation:expr) => {{
+                let before = self.screen.state_stamp();
+                $operation;
+                if before != self.screen.state_stamp() {
+                    self.screen_mutation_revision =
+                        self.screen_mutation_revision.saturating_add(1);
+                }
+            }};
+        }
         let unhandled = |screen: &mut crate::screen::Screen| {
             self.callbacks.unhandled_csi(
                 screen,
@@ -106,33 +153,67 @@ impl<CB: crate::callbacks::Callbacks> vte::Perform for WrappedScreen<CB> {
         };
         match intermediates.first() {
             None => match c {
-                '@' => self.screen.ich(canonicalize_params_1(params, 1)),
-                'A' => self.screen.cuu(canonicalize_params_1(params, 1)),
-                'B' => self.screen.cud(canonicalize_params_1(params, 1)),
-                'C' => self.screen.cuf(canonicalize_params_1(params, 1)),
-                'D' => self.screen.cub(canonicalize_params_1(params, 1)),
-                'E' => self.screen.cnl(canonicalize_params_1(params, 1)),
-                'F' => self.screen.cpl(canonicalize_params_1(params, 1)),
-                'G' => self.screen.cha(canonicalize_params_1(params, 1)),
-                'H' => self.screen.cup(canonicalize_params_2(params, 1, 1)),
-                'J' => self
+                '@' => {
+                    mutate!(self.screen.ich(canonicalize_params_1(params, 1)))
+                }
+                'A' => {
+                    mutate!(self.screen.cuu(canonicalize_params_1(params, 1)))
+                }
+                'B' => {
+                    mutate!(self.screen.cud(canonicalize_params_1(params, 1)))
+                }
+                'C' => {
+                    mutate!(self.screen.cuf(canonicalize_params_1(params, 1)))
+                }
+                'D' => {
+                    mutate!(self.screen.cub(canonicalize_params_1(params, 1)))
+                }
+                'E' => {
+                    mutate!(self.screen.cnl(canonicalize_params_1(params, 1)))
+                }
+                'F' => {
+                    mutate!(self.screen.cpl(canonicalize_params_1(params, 1)))
+                }
+                'G' => {
+                    mutate!(self.screen.cha(canonicalize_params_1(params, 1)))
+                }
+                'H' => mutate!(self
                     .screen
-                    .ed(canonicalize_params_1(params, 0), unhandled),
-                'K' => self
+                    .cup(canonicalize_params_2(params, 1, 1))),
+                'J' => mutate!(self
                     .screen
-                    .el(canonicalize_params_1(params, 0), unhandled),
-                'L' => self.screen.il(canonicalize_params_1(params, 1)),
-                'M' => self.screen.dl(canonicalize_params_1(params, 1)),
-                'P' => self.screen.dch(canonicalize_params_1(params, 1)),
-                'S' => self.screen.su(canonicalize_params_1(params, 1)),
-                'T' => self.screen.sd(canonicalize_params_1(params, 1)),
-                'X' => self.screen.ech(canonicalize_params_1(params, 1)),
-                'd' => self.screen.vpa(canonicalize_params_1(params, 1)),
-                'm' => self.screen.sgr(params, unhandled),
-                'r' => self.screen.decstbm(canonicalize_params_decstbm(
-                    params,
-                    self.screen.grid().size(),
-                )),
+                    .ed(canonicalize_params_1(params, 0), unhandled)),
+                'K' => mutate!(self
+                    .screen
+                    .el(canonicalize_params_1(params, 0), unhandled)),
+                'L' => {
+                    mutate!(self.screen.il(canonicalize_params_1(params, 1)))
+                }
+                'M' => {
+                    mutate!(self.screen.dl(canonicalize_params_1(params, 1)))
+                }
+                'P' => {
+                    mutate!(self.screen.dch(canonicalize_params_1(params, 1)))
+                }
+                'S' => {
+                    mutate!(self.screen.su(canonicalize_params_1(params, 1)))
+                }
+                'T' => {
+                    mutate!(self.screen.sd(canonicalize_params_1(params, 1)))
+                }
+                'X' => {
+                    mutate!(self.screen.ech(canonicalize_params_1(params, 1)))
+                }
+                'd' => {
+                    mutate!(self.screen.vpa(canonicalize_params_1(params, 1)))
+                }
+                'm' => mutate_stamp!(self.screen.sgr(params, unhandled)),
+                'r' => {
+                    let size = self.screen.grid().size();
+                    mutate!(self
+                        .screen
+                        .decstbm(canonicalize_params_decstbm(params, size)));
+                }
                 't' => {
                     let mut params_iter = params.iter();
                     let op =
@@ -169,14 +250,28 @@ impl<CB: crate::callbacks::Callbacks> vte::Perform for WrappedScreen<CB> {
                 }
             },
             Some(b'?') => match c {
-                'J' => self
+                'J' => mutate!(self
                     .screen
-                    .decsed(canonicalize_params_1(params, 0), unhandled),
-                'K' => self
+                    .decsed(canonicalize_params_1(params, 0), unhandled)),
+                'K' => mutate!(self
                     .screen
-                    .decsel(canonicalize_params_1(params, 0), unhandled),
-                'h' => self.screen.decset(params, unhandled),
-                'l' => self.screen.decrst(params, unhandled),
+                    .decsel(canonicalize_params_1(params, 0), unhandled)),
+                'h' => {
+                    let mutates = private_modes_mutate(params);
+                    self.screen.decset(params, unhandled);
+                    if mutates {
+                        self.screen_mutation_revision =
+                            self.screen_mutation_revision.saturating_add(1);
+                    }
+                }
+                'l' => {
+                    let mutates = private_modes_mutate(params);
+                    self.screen.decrst(params, unhandled);
+                    if mutates {
+                        self.screen_mutation_revision =
+                            self.screen_mutation_revision.saturating_add(1);
+                    }
+                }
                 _ => {
                     self.callbacks.unhandled_csi(
                         &mut self.screen,
@@ -190,6 +285,8 @@ impl<CB: crate::callbacks::Callbacks> vte::Perform for WrappedScreen<CB> {
             Some(b' ') if c == 'q' => {
                 if let Some(style) = cursor_style(params) {
                     self.screen.decscusr(style);
+                    self.screen_mutation_revision =
+                        self.screen_mutation_revision.saturating_add(1);
                 } else {
                     self.callbacks.unhandled_csi(
                         &mut self.screen,
@@ -275,6 +372,26 @@ fn cursor_style(params: &vte::Params) -> Option<crate::CursorStyle> {
         6 => Some(crate::CursorStyle::SteadyBar),
         _ => None,
     }
+}
+
+fn private_modes_mutate(params: &vte::Params) -> bool {
+    params.iter().any(|parameter| {
+        matches!(
+            parameter,
+            [1] | [6]
+                | [9]
+                | [25]
+                | [47]
+                | [1000]
+                | [1002]
+                | [1003]
+                | [1004]
+                | [1005]
+                | [1006]
+                | [1049]
+                | [2004]
+        )
+    })
 }
 
 fn canonicalize_params_1(params: &vte::Params, default: u16) -> u16 {

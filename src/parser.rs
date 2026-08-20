@@ -89,6 +89,17 @@ impl<CB: crate::callbacks::Callbacks> Parser<CB> {
         self.parser.advance(&mut self.screen, bytes);
     }
 
+    /// Returns a monotonic coordinate for parser-owned screen mutations.
+    ///
+    /// Diagnostic callbacks such as window-title and unsupported-sequence
+    /// reporting do not advance this coordinate. A callback implementation
+    /// that owns additional presentation state must track that state on its
+    /// own coordinate.
+    #[must_use]
+    pub fn screen_mutation_revision(&self) -> u64 {
+        self.screen.screen_mutation_revision()
+    }
+
     /// Resets terminal state for a replacement process according to `policy`.
     ///
     /// The parser returns to ground state, both live grids are cleared, cursor
@@ -98,7 +109,7 @@ impl<CB: crate::callbacks::Callbacks> Parser<CB> {
     /// the primary live screen are appended to that scrollback first.
     pub fn reset_for_new_process(&mut self, policy: NewProcessScreenPolicy) {
         self.parser = vte::Parser::new();
-        self.screen.screen.reset_for_new_process(policy);
+        self.screen.reset_for_new_process(policy);
     }
 
     /// Returns a reference to a [`Screen`](crate::Screen) object containing
