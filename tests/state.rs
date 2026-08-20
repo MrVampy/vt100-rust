@@ -1,6 +1,33 @@
 use vt100::{CellKind, NewProcessScreenPolicy, Parser};
 
 #[test]
+fn state_stamp_excludes_payload_but_tracks_hidden_terminal_state() {
+    let mut parser = Parser::new(4, 8, 8);
+    let initial = parser.screen().state_stamp();
+
+    parser.process(b"\x1b]0;ignored title\x07");
+    assert_eq!(parser.screen().state_stamp(), initial);
+
+    parser.process(b"\x1b[31m");
+    let styled = parser.screen().state_stamp();
+    assert_ne!(styled, initial);
+    assert_eq!(styled.attributes.foreground, vt100::Color::Idx(1));
+
+    parser.process(b"\x1b7\x1b[2;3r");
+    let saved_and_scrolled = parser.screen().state_stamp();
+    assert_ne!(saved_and_scrolled, styled);
+    assert_eq!(saved_and_scrolled.primary_grid.scroll_top, 1);
+    assert_eq!(saved_and_scrolled.primary_grid.scroll_bottom, 2);
+
+    let before_payload = parser.screen().state_stamp();
+    parser.process(b"x\x08");
+    let after_payload = parser.screen().state_stamp();
+    assert_eq!(after_payload, before_payload);
+    assert_eq!(parser.screen().cell(1, 0).unwrap().contents(), "x");
+    assert!(std::mem::size_of::<vt100::ScreenStateStamp>() <= 256);
+}
+
+#[test]
 fn round_trips_both_buffers_history_modes_and_pending_wrap() {
     let mut parser = Parser::new(4, 8, 8);
     parser.process(b"one\r\ntwo\r\nthree\r\nfour\r\nfive");

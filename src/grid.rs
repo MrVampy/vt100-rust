@@ -66,6 +66,26 @@ impl Grid {
         }
     }
 
+    pub(crate) fn state_stamp(&self) -> crate::GridStateStamp {
+        crate::GridStateStamp {
+            cursor: crate::Position {
+                row: self.pos.row,
+                column: self.pos.col,
+            },
+            saved_cursor: crate::Position {
+                row: self.saved_pos.row,
+                column: self.saved_pos.col,
+            },
+            scroll_top: self.scroll_top,
+            scroll_bottom: self.scroll_bottom,
+            origin_mode: self.origin_mode,
+            saved_origin_mode: self.saved_origin_mode,
+            scrollback_limit: self.scrollback_len,
+            scrollback_top: self.scrollback_top,
+            scrollback_rows: self.scrollback.len(),
+        }
+    }
+
     pub(crate) fn from_state(size: Size, state: crate::GridState) -> Self {
         Self {
             size,

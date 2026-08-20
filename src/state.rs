@@ -19,6 +19,53 @@ pub struct ScreenState {
     pub modes: ScreenModes,
 }
 
+/// A copy-only summary of terminal state that excludes cell and scrollback payloads.
+///
+/// This is useful when a caller already compares its own projected cells and
+/// needs to detect changes to drawing attributes, saved cursor state, scrolling
+/// regions, modes, or stable scrollback coordinates without cloning the full
+/// [`ScreenState`].
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ScreenStateStamp {
+    /// The number of terminal rows.
+    pub rows: u16,
+    /// The number of terminal columns.
+    pub columns: u16,
+    /// Scalar state for the primary screen grid.
+    pub primary_grid: GridStateStamp,
+    /// Scalar state for the alternate screen grid.
+    pub alternate_grid: GridStateStamp,
+    /// Attributes used for newly printed cells.
+    pub attributes: CellAttributes,
+    /// Attributes restored with the saved cursor.
+    pub saved_attributes: CellAttributes,
+    /// Safe input and presentation modes.
+    pub modes: ScreenModes,
+}
+
+/// A copy-only summary of one terminal grid without row payloads.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct GridStateStamp {
+    /// The current cursor position.
+    pub cursor: Position,
+    /// The saved cursor position.
+    pub saved_cursor: Position,
+    /// The first row in the scrolling region.
+    pub scroll_top: u16,
+    /// The last row in the scrolling region.
+    pub scroll_bottom: u16,
+    /// Whether cursor addressing is relative to the scrolling region.
+    pub origin_mode: bool,
+    /// The origin mode restored with the saved cursor.
+    pub saved_origin_mode: bool,
+    /// The maximum retained row count.
+    pub scrollback_limit: usize,
+    /// The stable index of the oldest retained row.
+    pub scrollback_top: usize,
+    /// The number of currently retained rows.
+    pub scrollback_rows: usize,
+}
+
 impl ScreenState {
     /// Verifies that this state can be imported without violating emulator invariants.
     ///

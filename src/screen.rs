@@ -97,21 +97,39 @@ impl Screen {
             alternate_grid: self.alternate_grid.state(),
             attributes: self.attrs.state(),
             saved_attributes: self.saved_attrs.state(),
-            modes: crate::ScreenModes {
-                active_buffer: if self.mode(MODE_ALTERNATE_SCREEN) {
-                    crate::ActiveBuffer::Alternate
-                } else {
-                    crate::ActiveBuffer::Primary
-                },
-                cursor_visible: !self.mode(MODE_HIDE_CURSOR),
-                cursor_style: self.cursor_style,
-                application_keypad: self.mode(MODE_APPLICATION_KEYPAD),
-                application_cursor: self.mode(MODE_APPLICATION_CURSOR),
-                bracketed_paste: self.mode(MODE_BRACKETED_PASTE),
-                focus_reporting: self.mode(MODE_FOCUS_REPORTING),
-                mouse_protocol_mode: self.mouse_protocol_mode,
-                mouse_protocol_encoding: self.mouse_protocol_encoding,
+            modes: self.modes_state(),
+        }
+    }
+
+    /// Returns scalar terminal state without cloning cells or retained rows.
+    #[must_use]
+    pub fn state_stamp(&self) -> crate::ScreenStateStamp {
+        crate::ScreenStateStamp {
+            rows: self.grid.size().rows,
+            columns: self.grid.size().cols,
+            primary_grid: self.grid.state_stamp(),
+            alternate_grid: self.alternate_grid.state_stamp(),
+            attributes: self.attrs.state(),
+            saved_attributes: self.saved_attrs.state(),
+            modes: self.modes_state(),
+        }
+    }
+
+    fn modes_state(&self) -> crate::ScreenModes {
+        crate::ScreenModes {
+            active_buffer: if self.mode(MODE_ALTERNATE_SCREEN) {
+                crate::ActiveBuffer::Alternate
+            } else {
+                crate::ActiveBuffer::Primary
             },
+            cursor_visible: !self.mode(MODE_HIDE_CURSOR),
+            cursor_style: self.cursor_style,
+            application_keypad: self.mode(MODE_APPLICATION_KEYPAD),
+            application_cursor: self.mode(MODE_APPLICATION_CURSOR),
+            bracketed_paste: self.mode(MODE_BRACKETED_PASTE),
+            focus_reporting: self.mode(MODE_FOCUS_REPORTING),
+            mouse_protocol_mode: self.mouse_protocol_mode,
+            mouse_protocol_encoding: self.mouse_protocol_encoding,
         }
     }
 
